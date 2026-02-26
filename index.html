@@ -544,12 +544,12 @@
     const data = Object.values(files);
 
     if (viz === 'top_regions') {
-      const { html, md } = buildTopRegions(data);
-      renderOutput(html, md);
+      const { html, md, csv } = buildTopRegions(data);
+      renderOutput(html, md, csv);
     } else if (viz === 'region_ownership') {
       if (data.length < 2) { showNotice('⚠ Upload at least 2 CSV files to use Region Ownership comparison.', true); return; }
-      const { html, md } = buildRegionOwnership(data);
-      renderOutput(html, md);
+      const { html, md, csv } = buildRegionOwnership(data);
+      renderOutput(html, md, csv);
     }
   });
 
@@ -581,10 +581,17 @@
       md += '\n';
     });
 
-    return { html, md: md.trim() };
-  }
+    // CSV — one section per keyword separated by a blank row
+    const csvRows = [];
+    data.forEach(({ keyword, rows }) => {
+      csvRows.push([keyword]);
+      csvRows.push(['#', 'Region', 'Island Group', 'Index']);
+      rows.slice(0, 5).forEach((r, i) => csvRows.push([i + 1, r.region, getIslandGroup(r.region), r.index]));
+      csvRows.push([]);
+    });
 
-  // ── Island group mapping ───────────────────────────────
+    return { html, md: md.trim(), csv: toCSV(csvRows) };
+  }
   const ISLAND_GROUPS = {
     'Luzon': [
       'Ilocos Region',
@@ -704,16 +711,31 @@
       md += '\n';
     });
 
-    return { html, md: md.trim() };
+    // CSV
+    const csvRows = [['Island Group', 'Region', 'Top Keyword', ...data.map(d => d.keyword)]];
+    Object.entries(ISLAND_GROUPS).forEach(([group, groupRegions]) => {
+      groupRegions.forEach(groupRegion => {
+        const result = regionResults.find(rr => rr.region.toLowerCase() === groupRegion.toLowerCase());
+        if (!result) return;
+        const { region, scores, winners } = result;
+        const topKw = winners.map(w => w.keyword).join(', ') + (winners.length > 1 ? ' (tied)' : '');
+        csvRows.push([group, region, topKw, ...scores.map(s => s.index)]);
+      });
+    });
+
+    return { html, md: md.trim(), csv: toCSV(csvRows) };
   }
 
   // ── Render ─────────────────────────────────────────────
-  function renderOutput(previewHtml, markdown) {
+  function renderOutput(previewHtml, markdown, csvData) {
     outputEl.innerHTML = `
       <div class="output-section">
         <div class="output-header">
           <span></span>
-          <button class="copy-btn" id="copyBtn">Copy Markdown</button>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="copy-btn" id="csvBtn">⬇ Download CSV</button>
+            <button class="copy-btn" id="copyBtn">Copy Markdown</button>
+          </div>
         </div>
         <div class="tabs">
           <div class="tab active" data-tab="preview">Visual Preview</div>
@@ -730,6 +752,16 @@
       setTimeout(() => document.getElementById('copyBtn').textContent = 'Copy Markdown', 2000);
     });
 
+    document.getElementById('csvBtn').addEventListener('click', () => {
+      const blob = new Blob([csvData], { type: 'text/csv' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `geotrends_${vizSelect.value}_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -738,6 +770,15 @@
         document.getElementById('rawPane').style.display     = tab.dataset.tab === 'raw' ? '' : 'none';
       });
     });
+  }
+
+  function toCSV(rows) {
+    return rows.map(row =>
+      row.map(cell => {
+        const s = String(cell);
+        return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+      }).join(',')
+    ).join('\n');
   }
 
   function escapeHtml(str) {
