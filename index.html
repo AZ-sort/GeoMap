@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GeoTrends Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --border: #dde1e9;
+      --border-strong: #c4c9d4;
+      --accent: #0066ff;
+      --accent-light: #e8f0fe;
+      --accent2: #e53935;
+      --text: #1a1d26;
+      --muted: #7a7f93;
+      --card: #f9fafb;
+      --shared: #d97706;
+      --shared-light: #fffbeb;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,102,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,102,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 2rem;
+    }
+
+    .logo-row {
+      display: flex; align-items: center; gap: 1rem; margin-bottom: 0.4rem;
+    }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      background: var(--accent-light);
+    }
+
+    h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+    h1 span { color: var(--accent); }
+
+    .subtitle {
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+    }
+
+    .upload-zone {
+      border: 2px dashed var(--border-strong);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--surface);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-zone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(0,102,255,0.05), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .upload-zone:hover::before, .upload-zone.drag-over::before { opacity: 1; }
+
+    .upload-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+    .upload-zone h2 { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .upload-zone p { color: var(--muted); font-size: 0.82rem; font-family: 'Space Mono', monospace; }
+
+    #fileInput { display: none; }
+
+    .file-list { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.2rem; }
+
+    .file-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.78rem;
+      font-family: 'Space Mono', monospace;
+      display: flex; align-items: center; gap: 0.5rem;
+      animation: chipIn 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .file-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .file-chip .remove { cursor: pointer; color: var(--muted); font-size: 1rem; line-height: 1; margin-left: 0.2rem; }
+    .file-chip .remove:hover { color: var(--accent2); }
+
+    @keyframes chipIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .controls { margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+    .select-group { flex: 1; min-width: 220px; }
+
+    label {
+      display: block;
+      font-size: 0.72rem;
+      font-family: 'Space Mono', monospace;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%237a7f93' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.9rem center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    select:focus { outline: none; border-color: var(--accent); }
+
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.8rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,102,255,0.2);
+    }
+
+    .btn:hover { background: #0052cc; transform: translateY(-1px); }
+    .btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .output-section { margin-top: 2.5rem; animation: fadeIn 0.4s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+
+    .output-title {
+      font-size: 0.72rem;
+      font-family: 'Space Mono', monospace;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .copy-btn {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      padding: 0.3rem 0.8rem;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); }
+
+    .tab {
+      padding: 0.5rem 1rem;
+      font-size: 0.78rem;
+      font-family: 'Space Mono', monospace;
+      cursor: pointer;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.2s;
+    }
+
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .output-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      padding: 1.5rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      color: var(--text);
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .preview-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      padding: 1.5rem 2rem;
+      max-height: 700px;
+      overflow-y: auto;
+    }
+
+    .preview-box h2 { font-size: 1.25rem; font-weight: 800; color: var(--text); margin-bottom: 0.25rem; }
+    .preview-box .date-note { font-size: 0.78rem; color: var(--muted); font-family: 'Space Mono', monospace; margin-bottom: 1.5rem; }
+
+    .preview-box h3 {
+      font-size: 1rem; font-weight: 700; color: var(--text);
+      margin: 2rem 0 0.75rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .preview-box h4 {
+      font-size: 0.85rem; font-weight: 700; color: var(--text);
+      margin: 1.2rem 0 0.5rem;
+    }
+
+    .preview-box hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    /* Rank list */
+    .rank-list { list-style: none; padding: 0; margin: 0 0 0.5rem; }
+
+    .rank-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 8px;
+      margin-bottom: 0.35rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      font-size: 0.88rem;
+      transition: background 0.15s;
+    }
+
+    .rank-item:hover { background: var(--accent-light); }
+
+    .rank-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.72rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .rank-num.rank-1 { background: #f59e0b; }
+    .rank-num.rank-2 { background: #94a3b8; }
+    .rank-num.rank-3 { background: #b87333; }
+
+    .rank-region { font-weight: 600; flex: 1; }
+
+    .rank-index {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    /* Table */
+    .preview-table-wrap {
+      overflow-x: auto;
+      margin: 0.5rem 0 1.5rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .preview-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+
+    .preview-table th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      background: var(--card);
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .preview-table td {
+      padding: 0.55rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .preview-table tr:last-child td { border-bottom: none; }
+    .preview-table tr:hover td { background: var(--accent-light); }
+    .preview-table td.top-val { font-weight: 700; color: var(--accent); }
+
+    /* Shared */
+    .shared-badge {
+      display: inline-block;
+      background: var(--shared-light);
+      color: var(--shared);
+      border: 1px solid #fcd34d;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-family: 'Space Mono', monospace;
+      padding: 0.1rem 0.4rem;
+      margin-left: 0.4rem;
+      vertical-align: middle;
+    }
+
+    .shared-section {
+      background: var(--shared-light);
+      border: 1px solid #fcd34d;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .shared-section h3 {
+      color: var(--shared);
+      border-bottom-color: #fcd34d;
+      margin-top: 0;
+    }
+
+    .shared-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 0.6rem;
+      border-radius: 6px;
+      background: #fff8e1;
+      border: 1px solid #fde68a;
+      margin-bottom: 0.35rem;
+      font-size: 0.88rem;
+    }
+
+    .shared-item .tied-keywords { font-weight: 600; flex: 1; }
+    .shared-item .tied-index { font-family: 'Space Mono', monospace; font-size: 0.78rem; color: var(--shared); }
+
+    /* Notice */
+    .notice {
+      background: var(--accent-light);
+      border: 1px solid rgba(0,102,255,0.2);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      font-size: 0.82rem;
+      color: var(--accent);
+      font-family: 'Space Mono', monospace;
+      margin-top: 1.5rem;
+    }
+
+    .notice.error { background: #fef2f2; border-color: #fca5a5; color: var(--accent2); }
+
+    .kw-pill {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      font-family: 'Space Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo-row">
+      <div class="logo-icon">📍</div>
+      <h1>Geo<span>Trends</span></h1>
+    </div>
+    <p class="subtitle">// Google Trends Geography Data Analyzer</p>
+  </header>
+
+  <div class="upload-zone" id="uploadZone">
+    <span class="upload-icon">📂</span>
+    <h2>Drop CSV files here</h2>
+    <p>or click to browse — accepts multiple Google Trends GeoMap exports</p>
+    <input type="file" id="fileInput" accept=".csv" multiple />
+  </div>
+
+  <div class="file-list" id="fileList"></div>
+
+  <div class="controls">
+    <div class="select-group">
+      <label for="vizSelect">Visualization Type</label>
+      <select id="vizSelect">
+        <option value="">— Select a view —</option>
+        <option value="top_regions">Top Regions (per keyword)</option>
+        <option value="region_ownership">Region Ownership (multi-file comparison)</option>
+      </select>
+    </div>
+    <button class="btn" id="generateBtn" disabled>Generate →</button>
+  </div>
+
+  <div id="notice"></div>
+  <div id="output"></div>
+</div>
+
+<script>
+  const KW_COLORS = [
+    ['#dbeafe','#1d4ed8'], ['#dcfce7','#15803d'], ['#fce7f3','#be185d'],
+    ['#ede9fe','#6d28d9'], ['#ffedd5','#c2410c'], ['#f0fdf4','#166534'],
+    ['#fef3c7','#92400e'], ['#ecfeff','#0e7490']
+  ];
+
+  const files = {};
+
+  const uploadZone  = document.getElementById('uploadZone');
+  const fileInput   = document.getElementById('fileInput');
+  const fileList    = document.getElementById('fileList');
+  const vizSelect   = document.getElementById('vizSelect');
+  const generateBtn = document.getElementById('generateBtn');
+  const noticeEl    = document.getElementById('notice');
+  const outputEl    = document.getElementById('output');
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault(); uploadZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+  function handleFiles(fileObjs) {
+    Array.from(fileObjs).forEach(f => {
+      if (!f.name.endsWith('.csv')) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const parsed = parseGeoCSV(e.target.result, f.name);
+        if (parsed) { files[f.name] = parsed; renderChips(); updateBtn(); }
+      };
+      reader.readAsText(f);
+    });
+  }
+
+  function parseGeoCSV(text, filename) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    let headerIdx = lines.findIndex(l => l.startsWith('Region,'));
+    if (headerIdx === -1) return null;
+    const header = lines[headerIdx];
+    const keywordMatch = header.match(/^Region,(.+?)(?:\s*:\s*\(|$)/);
+    const keyword = keywordMatch ? keywordMatch[1].trim() : filename.replace('.csv','');
+    const rows = [];
+    for (let i = headerIdx + 1; i < lines.length; i++) {
+      const parts = lines[i].split(',');
+      if (parts.length < 2) continue;
+      const region = parts.slice(0, -1).join(',').trim();
+      const index  = parseInt(parts[parts.length - 1]);
+      if (region && !isNaN(index)) rows.push({ region, index });
+    }
+    rows.sort((a, b) => b.index - a.index);
+    return { keyword, rows };
+  }
+
+  function renderChips() {
+    fileList.innerHTML = '';
+    Object.keys(files).forEach((name, i) => {
+      const [bg, fg] = KW_COLORS[i % KW_COLORS.length];
+      const chip = document.createElement('div');
+      chip.className = 'file-chip';
+      chip.innerHTML = `<span class="dot" style="background:${fg}"></span><span style="color:${fg}">${files[name].keyword}</span><span class="remove" data-name="${name}">×</span>`;
+      fileList.appendChild(chip);
+    });
+    fileList.querySelectorAll('.remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        delete files[btn.dataset.name]; renderChips(); updateBtn(); outputEl.innerHTML = '';
+      });
+    });
+  }
+
+  function updateBtn() {
+    generateBtn.disabled = Object.keys(files).length === 0 || !vizSelect.value;
+  }
+
+  vizSelect.addEventListener('change', () => {
+    updateBtn();
+    if (vizSelect.value === 'region_ownership' && Object.keys(files).length < 2)
+      showNotice('⚠ Upload at least 2 CSV files to use Region Ownership comparison.', true);
+    else noticeEl.innerHTML = '';
+  });
+
+  function showNotice(msg, isError = false) {
+    noticeEl.innerHTML = `<div class="notice ${isError ? 'error' : ''}">${msg}</div>`;
+  }
+
+  generateBtn.addEventListener('click', () => {
+    noticeEl.innerHTML = '';
+    const viz  = vizSelect.value;
+    const data = Object.values(files);
+
+    if (viz === 'top_regions') {
+      const { html, md } = buildTopRegions(data);
+      renderOutput(html, md);
+    } else if (viz === 'region_ownership') {
+      if (data.length < 2) { showNotice('⚠ Upload at least 2 CSV files to use Region Ownership comparison.', true); return; }
+      const { html, md } = buildRegionOwnership(data);
+      renderOutput(html, md);
+    }
+  });
+
+  function kwColor(idx) { return KW_COLORS[idx % KW_COLORS.length]; }
+
+  // ── Top Regions ────────────────────────────────────────
+  function buildTopRegions(data) {
+    const date = new Date().toLocaleDateString();
+    let html = `<h2>📍 Top Regions by Keyword</h2><p class="date-note">Generated: ${date}</p>`;
+    let md   = `## 📍 Top Regions by Keyword\n\n_Generated: ${date}_\n\n`;
+
+    data.forEach(({ keyword, rows }, ki) => {
+      const [bg, fg] = kwColor(ki);
+      const top5 = rows.slice(0, 5);
+
+      html += `<h3><span class="kw-pill" style="background:${bg};color:${fg}">${keyword}</span></h3>`;
+      html += `<div class="preview-table-wrap"><table class="preview-table"><thead><tr><th>#</th><th>Region</th><th>Island Group</th><th>Index</th></tr></thead><tbody>`;
+      top5.forEach((r, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+        const group = getIslandGroup(r.region);
+        const groupColors = { 'Luzon': ['#eff6ff','#1d4ed8'], 'Visayas': ['#fefce8','#a16207'], 'Mindanao': ['#fef2f2','#b91c1c'], '—': ['#f9fafb','#7a7f93'] };
+        const [gbg, gfg] = groupColors[group] || groupColors['—'];
+        html += `<tr><td style="text-align:center;width:2.5rem">${medal}</td><td>${r.region}</td><td><span class="kw-pill" style="background:${gbg};color:${gfg}">${group}</span></td><td class="top-val">${r.index}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+
+      md += `### ${keyword}\n\n| # | Region | Island Group | Index |\n|---|--------|--------------|-------|\n`;
+      top5.forEach((r, i) => { md += `| ${i + 1} | ${r.region} | ${getIslandGroup(r.region)} | ${r.index} |\n`; });
+      md += '\n';
+    });
+
+    return { html, md: md.trim() };
+  }
+
+  // ── Island group mapping ───────────────────────────────
+  const ISLAND_GROUPS = {
+    'Luzon': [
+      'Ilocos Region',
+      'Cagayan Valley',
+      'Central Luzon',
+      'Metro Manila',
+      'Cordillera Administrative Region',
+      'Calabarzon',
+      'MIMAROPA',
+      'Bicol'
+    ],
+    'Visayas': [
+      'Western Visayas',
+      'Central Visayas',
+      'Eastern Visayas'
+    ],
+    'Mindanao': [
+      'Zamboanga Peninsula',
+      'Northern Mindanao',
+      'Davao Region',
+      'Region XII',
+      'Caraga',
+      'Autonomous Region in Muslim Mindanao'
+    ]
+  };
+
+  function getIslandGroup(region) {
+    for (const [group, regions] of Object.entries(ISLAND_GROUPS)) {
+      if (regions.some(r => r.toLowerCase() === region.toLowerCase())) return group;
+    }
+    return '—';
+  }
+
+  // ── Region Ownership ───────────────────────────────────
+  function buildRegionOwnership(data) {
+    const date = new Date().toLocaleDateString();
+    const allRegions = [...new Set(data.flatMap(d => d.rows.map(r => r.region)))].sort();
+
+    const regionResults = allRegions.map(region => {
+      const scores = data.map(({ keyword, rows }, ki) => {
+        const row = rows.find(r => r.region === region);
+        return { keyword, index: row ? row.index : 0, ki };
+      });
+      const maxIdx  = Math.max(...scores.map(s => s.index));
+      const winners = scores.filter(s => s.index === maxIdx);
+      return { region, winners, maxIdx, scores };
+    });
+
+    const sharedRegions = regionResults.filter(r => r.winners.length > 1);
+
+    // HTML
+    let html = `<h2>🗺 Region Ownership</h2><p class="date-note">Generated: ${date}</p>`;
+
+
+
+    html += `<h3>🏝 Ownership by Island Group</h3>`;
+    html += `<div class="preview-table-wrap"><table class="preview-table"><thead><tr><th>Island Group</th><th>Region</th><th>Top Keyword</th>`;
+    data.forEach(({ keyword }, ki) => {
+      const [bg, fg] = kwColor(ki);
+      html += `<th><span class="kw-pill" style="background:${bg};color:${fg}">${keyword}</span></th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    Object.entries(ISLAND_GROUPS).forEach(([group, groupRegions], gi) => {
+      const groupColors = ['#eff6ff', '#fefce8', '#fef2f2'];
+      const groupTextColors = ['#1d4ed8', '#a16207', '#b91c1c'];
+      const groupBg = groupColors[gi];
+      const groupFg = groupTextColors[gi];
+
+      // Find which of our data regions match this group (case-insensitive partial match)
+      const matchedRegions = groupRegions.filter(gr =>
+        regionResults.some(rr => rr.region.toLowerCase() === gr.toLowerCase())
+      );
+
+      if (matchedRegions.length === 0) return;
+
+      matchedRegions.forEach((groupRegion, ri) => {
+        const result = regionResults.find(rr => rr.region.toLowerCase() === groupRegion.toLowerCase());
+        if (!result) return;
+        const { region, scores, winners, maxIdx } = result;
+        const isShared = winners.length > 1;
+        const winnerLabel = isShared
+          ? winners.map(w => { const [bg,fg]=kwColor(w.ki); return `<span class="kw-pill" style="background:${bg};color:${fg}">${w.keyword}</span>`; }).join(' & ')
+          : (() => { const [bg,fg]=kwColor(winners[0].ki); return `<span class="kw-pill" style="background:${bg};color:${fg}">${winners[0].keyword}</span>`; })();
+
+        html += `<tr>`;
+        // Island group label only on first row of group
+        if (ri === 0) {
+          html += `<td rowspan="${matchedRegions.length}" style="background:${groupBg};color:${groupFg};font-weight:700;text-align:center;vertical-align:middle;border-right:2px solid ${groupFg}22;">${group}</td>`;
+        }
+        html += `<td>${region}${isShared ? '<span class="shared-badge">tied</span>' : ''}</td><td>${winnerLabel}</td>`;
+        scores.forEach(s => {
+          html += `<td class="${s.index === maxIdx ? 'top-val' : ''}">${s.index}</td>`;
+        });
+        html += `</tr>`;
+      });
+    });
+
+    html += `</tbody></table></div>`;
+
+    html += `<h3>📈 Full Index Comparison</h3><div class="preview-table-wrap"><table class="preview-table"><thead><tr><th>Region</th><th>Top Keyword</th>`;
+    data.forEach(({ keyword }, ki) => {
+      const [bg, fg] = kwColor(ki);
+      html += `<th><span class="kw-pill" style="background:${bg};color:${fg}">${keyword}</span></th>`;
+    });
+    html += `</tr></thead><tbody>`;
+    regionResults.forEach(({ region, scores, winners, maxIdx }) => {
+      const isShared = winners.length > 1;
+      const winnerLabel = isShared
+        ? winners.map(w => { const [bg,fg]=kwColor(w.ki); return `<span class="kw-pill" style="background:${bg};color:${fg}">${w.keyword}</span>`; }).join(' & ')
+        : (() => { const [bg,fg]=kwColor(winners[0].ki); return `<span class="kw-pill" style="background:${bg};color:${fg}">${winners[0].keyword}</span>`; })();
+      html += `<tr><td>${region}${isShared ? '<span class="shared-badge">tied</span>' : ''}</td><td>${winnerLabel}</td>`;
+      scores.forEach(s => {
+        html += `<td class="${s.index === maxIdx ? 'top-val' : ''}">${s.index}</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+
+    // Markdown
+    let md = `## 🗺 Region Ownership by Keyword\n\n_Generated: ${date}_\n\n`;
+
+    md += `### 🏝 Ownership by Island Group\n\n`;
+    Object.entries(ISLAND_GROUPS).forEach(([group, groupRegions]) => {
+      md += `#### ${group}\n\n`;
+      md += `| Region | Top Keyword | ${data.map(d => d.keyword).join(' | ')} |\n`;
+      md += `|--------|-------------|${data.map(() => '------').join('|')}|\n`;
+      groupRegions.forEach(groupRegion => {
+        const result = regionResults.find(rr => rr.region.toLowerCase() === groupRegion.toLowerCase());
+        if (!result) return;
+        const { region, scores, winners, maxIdx } = result;
+        const isShared = winners.length > 1;
+        const topKw = winners.map(w => w.keyword).join(', ') + (isShared ? ' *(tied)*' : '');
+        const vals = scores.map(s => s.index === maxIdx ? `**${s.index}**` : s.index);
+        md += `| ${region} | ${topKw} | ${vals.join(' | ')} |\n`;
+      });
+      md += '\n';
+    });
+
+    md += `### 📈 Full Index Comparison\n\n`;
+    md += `| Region | Top Keyword | ${data.map(d => d.keyword).join(' | ')} |\n`;
+    md += `|--------|-------------|${data.map(() => '------').join('|')}|\n`;
+    regionResults.forEach(({ region, scores, maxIdx, winners }) => {
+      const shared = winners.length > 1 ? ' *(tied)*' : '';
+      const topKw = winners.map(w => w.keyword).join(', ');
+      const vals = scores.map(s => s.index === maxIdx ? `**${s.index}**` : s.index);
+      md += `| ${region}${shared} | ${topKw} | ${vals.join(' | ')} |\n`;
+    });
+
+    return { html, md: md.trim() };
+  }
+
+  // ── Render ─────────────────────────────────────────────
+  function renderOutput(previewHtml, markdown) {
+    outputEl.innerHTML = `
+      <div class="output-section">
+        <div class="output-header">
+          <span class="output-title">// Output</span>
+          <button class="copy-btn" id="copyBtn">Copy Markdown</button>
+        </div>
+        <div class="tabs">
+          <div class="tab active" data-tab="preview">Visual Preview</div>
+          <div class="tab" data-tab="raw">Raw Markdown</div>
+        </div>
+        <div id="previewPane" class="preview-box">${previewHtml}</div>
+        <div id="rawPane" class="output-box" style="display:none">${escapeHtml(markdown)}</div>
+      </div>
+    `;
+
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(markdown);
+      document.getElementById('copyBtn').textContent = 'Copied!';
+      setTimeout(() => document.getElementById('copyBtn').textContent = 'Copy Markdown', 2000);
+    });
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('previewPane').style.display = tab.dataset.tab === 'preview' ? '' : 'none';
+        document.getElementById('rawPane').style.display     = tab.dataset.tab === 'raw' ? '' : 'none';
+      });
+    });
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
