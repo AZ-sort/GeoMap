@@ -424,7 +424,6 @@
       <div class="logo-icon">📍</div>
       <h1>Geo<span>Trends</span></h1>
     </div>
-    <p class="subtitle">// Google Trends Geography Data Analyzer</p>
   </header>
 
   <div class="upload-zone" id="uploadZone">
@@ -641,7 +640,6 @@
 
 
 
-    html += `<h3>🏝 Ownership by Island Group</h3>`;
     html += `<div class="preview-table-wrap"><table class="preview-table"><thead><tr><th>Island Group</th><th>Region</th><th>Top Keyword</th>`;
     data.forEach(({ keyword }, ki) => {
       const [bg, fg] = kwColor(ki);
@@ -686,25 +684,6 @@
 
     html += `</tbody></table></div>`;
 
-    html += `<h3>📈 Full Index Comparison</h3><div class="preview-table-wrap"><table class="preview-table"><thead><tr><th>Region</th><th>Top Keyword</th>`;
-    data.forEach(({ keyword }, ki) => {
-      const [bg, fg] = kwColor(ki);
-      html += `<th><span class="kw-pill" style="background:${bg};color:${fg}">${keyword}</span></th>`;
-    });
-    html += `</tr></thead><tbody>`;
-    regionResults.forEach(({ region, scores, winners, maxIdx }) => {
-      const isShared = winners.length > 1;
-      const winnerLabel = isShared
-        ? winners.map(w => { const [bg,fg]=kwColor(w.ki); return `<span class="kw-pill" style="background:${bg};color:${fg}">${w.keyword}</span>`; }).join(' & ')
-        : (() => { const [bg,fg]=kwColor(winners[0].ki); return `<span class="kw-pill" style="background:${bg};color:${fg}">${winners[0].keyword}</span>`; })();
-      html += `<tr><td>${region}${isShared ? '<span class="shared-badge">tied</span>' : ''}</td><td>${winnerLabel}</td>`;
-      scores.forEach(s => {
-        html += `<td class="${s.index === maxIdx ? 'top-val' : ''}">${s.index}</td>`;
-      });
-      html += `</tr>`;
-    });
-    html += `</tbody></table></div>`;
-
     // Markdown
     let md = `## 🗺 Region Ownership by Keyword\n\n_Generated: ${date}_\n\n`;
 
@@ -725,16 +704,6 @@
       md += '\n';
     });
 
-    md += `### 📈 Full Index Comparison\n\n`;
-    md += `| Region | Top Keyword | ${data.map(d => d.keyword).join(' | ')} |\n`;
-    md += `|--------|-------------|${data.map(() => '------').join('|')}|\n`;
-    regionResults.forEach(({ region, scores, maxIdx, winners }) => {
-      const shared = winners.length > 1 ? ' *(tied)*' : '';
-      const topKw = winners.map(w => w.keyword).join(', ');
-      const vals = scores.map(s => s.index === maxIdx ? `**${s.index}**` : s.index);
-      md += `| ${region}${shared} | ${topKw} | ${vals.join(' | ')} |\n`;
-    });
-
     return { html, md: md.trim() };
   }
 
@@ -743,7 +712,7 @@
     outputEl.innerHTML = `
       <div class="output-section">
         <div class="output-header">
-          <span class="output-title">// Output</span>
+          <span></span>
           <button class="copy-btn" id="copyBtn">Copy Markdown</button>
         </div>
         <div class="tabs">
