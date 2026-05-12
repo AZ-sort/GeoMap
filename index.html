@@ -11,6 +11,7 @@
   :root {
     --cream:      #faf7f2;
     --cream2:     #f2ece2;
+    --white:      #ffffff;
     --black:      #1a1714;
     --text:       #2a2420;
     --muted:      #7a6f68;
@@ -48,14 +49,20 @@
 
   /* ── NAV ── */
   nav {
-    position: sticky;
-    top: 0; z-index: 50;
-    background: var(--black);
-    border-bottom: 2px solid var(--terra);
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    background: transparent;
     height: 52px;
     display: flex;
     align-items: center;
     padding: 0 40px;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+
+  nav.scrolled {
+    background: var(--black);
+    box-shadow: 0 1px 0 rgba(196,92,58,0.5);
   }
 
   .nav-inner {
@@ -78,6 +85,27 @@
 
   .wordmark em { font-style: italic; color: var(--terra-mid); font-weight: 300; }
 
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .nav-back {
+    font-size: 10px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: color 0.15s;
+  }
+
+  .nav-back:hover { color: var(--terra-mid); }
+
   .nav-tag {
     font-size: 10px;
     font-weight: 500;
@@ -86,15 +114,48 @@
     color: rgba(255,255,255,0.3);
   }
 
+  /* ── HERO STRIP ── */
+  .hero-strip {
+    background: var(--black);
+    padding: 80px 32px 56px;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 2px solid var(--terra);
+  }
+
+  .hero-strip-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-strip-glow {
+    position: absolute;
+    bottom: -120px; right: -120px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(196,92,58,0.2) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+    transition: transform 0.6s cubic-bezier(0.16,1,0.3,1);
+  }
+
   /* ── MAIN ── */
   main {
     max-width: 900px;
     margin: 0 auto;
-    padding: 56px 32px 96px;
+    padding: 40px 32px 96px;
   }
 
-  /* ── HEADER ── */
-  .header { margin-bottom: 36px; }
+  /* ── ENTRANCE ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-strip .eyebrow    { animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.05s both; }
+  .hero-strip h1          { animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.15s both; }
+  .hero-strip .header-desc { animation: fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.25s both; }
 
   .eyebrow {
     display: flex;
@@ -104,7 +165,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--terra);
+    color: var(--terra-mid);
     margin-bottom: 12px;
   }
 
@@ -113,7 +174,7 @@
     display: block;
     width: 18px;
     height: 1.5px;
-    background: var(--terra);
+    background: var(--terra-mid);
   }
 
   h1 {
@@ -122,15 +183,15 @@
     font-weight: 700;
     line-height: 1.08;
     letter-spacing: -0.02em;
-    color: var(--black);
+    color: var(--white);
     margin-bottom: 8px;
   }
 
-  h1 em { font-style: italic; color: var(--terra); font-weight: 300; }
+  h1 em { font-style: italic; color: var(--terra-mid); font-weight: 300; }
 
   .header-desc {
     font-size: 13px;
-    color: var(--muted);
+    color: rgba(255,255,255,0.4);
     font-weight: 300;
     line-height: 1.65;
   }
@@ -578,19 +639,29 @@
 </head>
 <body>
 
-<nav>
+<nav id="mainNav">
   <div class="nav-inner">
     <a class="wordmark" href="https://az-sort.github.io/HomePage/">az<em>-</em>sort</a>
-    <span class="nav-tag">Data visualization</span>
+    <div class="nav-right">
+      <a class="nav-back" href="https://az-sort.github.io/HomePage/">← All tools</a>
+      <span class="nav-tag">Data visualization</span>
+    </div>
   </div>
 </nav>
 
-<main>
-  <div class="header">
-    <div class="eyebrow">Data visualization</div>
-    <h1>Geo<em>Map.</em></h1>
-    <p class="header-desc">Upload Google Trends geography exports and map regional search interest across the Philippines — clean, organized, and ready to share.</p>
+<!-- HERO STRIP -->
+<div class="hero-strip" id="heroStrip">
+  <div class="hero-strip-glow" id="heroGlow"></div>
+  <div class="hero-strip-inner">
+    <div class="header">
+      <div class="eyebrow">Data visualization</div>
+      <h1>Geo<em>Map.</em></h1>
+      <p class="header-desc">Upload Google Trends geography exports and map regional search interest across the Philippines — clean, organized, and ready to share.</p>
+    </div>
   </div>
+</div>
+
+<main>
 
   <div class="upload-zone" id="uploadZone">
     <div class="upload-icon">↑</div>
@@ -1100,6 +1171,27 @@
   function escapeHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
+
+  // ── Nav scroll state ─────────────────────────────────
+  const mainNav = document.getElementById('mainNav');
+  window.addEventListener('scroll', () => {
+    mainNav.classList.toggle('scrolled', window.scrollY > 10);
+  }, { passive: true });
+
+  // ── Parallax on hero glow ────────────────────────────
+  const heroGlow  = document.getElementById('heroGlow');
+  const heroStrip = document.getElementById('heroStrip');
+
+  heroStrip.addEventListener('mousemove', e => {
+    const rect = heroStrip.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) / rect.width;
+    const cy = (e.clientY - rect.top)  / rect.height;
+    heroGlow.style.transform = `translate(${(cx - 0.5) * -36}px, ${(cy - 0.5) * -24}px)`;
+  });
+
+  heroStrip.addEventListener('mouseleave', () => {
+    heroGlow.style.transform = 'translate(0,0)';
+  });
 </script>
 </body>
 </html>
